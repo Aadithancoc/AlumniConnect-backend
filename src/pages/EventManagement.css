@@ -1,8 +1,112 @@
 /* =========== Event Management =========== */
-.event-mgmt {
+.em-page {
     display: flex;
     flex-direction: column;
     gap: 20px;
+}
+
+/* Type Breakdown Cards */
+.em-type-cards {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.em-type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 20px;
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--bg-gray-100);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+    opacity: 0;
+    min-width: 80px;
+}
+
+.em-type-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.em-type-card svg {
+    color: var(--text-muted);
+}
+
+.em-type-total svg {
+    color: var(--primary);
+}
+
+.em-type-val {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.em-type-lbl {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: capitalize;
+}
+
+.em-type-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: rgba(139, 92, 246, 0.1);
+    color: #8B5CF6;
+    text-transform: capitalize;
+}
+
+.em-card-rsvp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+/* Grid Layout */
+.em-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+}
+
+.em-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.em-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: rgba(139, 92, 246, 0.1);
+    color: #8B5CF6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.em-card-badges {
+    display: flex;
+    gap: 6px;
+}
+
+.em-card--upcoming {
+    border-left: 3px solid var(--primary);
+}
+
+.em-card--completed {
+    border-left: 3px solid var(--info);
 }
 
 .em-header {

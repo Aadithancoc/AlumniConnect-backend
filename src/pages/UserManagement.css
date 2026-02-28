@@ -1,8 +1,142 @@
 /* =========== User Management =========== */
-.user-mgmt {
+.um-page {
     display: flex;
     flex-direction: column;
     gap: 20px;
+}
+
+/* Role Tabs */
+.um-role-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    opacity: 0;
+}
+
+.um-role-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: var(--radius-full);
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 1.5px solid var(--bg-gray-200);
+}
+
+.um-role-tab.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.um-role-tab:hover:not(.active) {
+    background: var(--bg-gray-50);
+}
+
+.um-role-count {
+    font-size: 0.7rem;
+    background: var(--bg-gray-100);
+    padding: 1px 7px;
+    border-radius: var(--radius-full);
+}
+
+.um-role-tab.active .um-role-count {
+    background: rgba(43, 182, 115, 0.2);
+    color: var(--primary);
+}
+
+/* Role & Status Badges */
+.um-role-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    text-transform: capitalize;
+}
+
+.um-role-student {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3B82F6;
+}
+
+.um-role-alumni {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+
+.um-role-staff {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8B5CF6;
+}
+
+.um-status-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    text-transform: capitalize;
+}
+
+.um-status-badge.active {
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.um-status-badge.suspended {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.um-mentor-icon {
+    color: #EF4444;
+}
+
+.um-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.um-sortable:hover {
+    color: var(--primary);
+}
+
+.um-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.um-suspend {
+    color: #F97316;
+    background: rgba(249, 115, 22, 0.1);
+}
+
+.um-suspend:hover {
+    background: #F97316;
+    color: #fff;
+}
+
+.um-email {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.um-search {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1.5px solid var(--bg-gray-200);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    transition: border var(--transition-fast);
+}
+
+.um-search:focus {
+    border-color: var(--primary);
+    outline: none;
 }
 
 /* Header */

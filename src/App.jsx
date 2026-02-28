@@ -4,10 +4,12 @@ import Login from "./pages/Login";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
+import StaffVerification from "./pages/StaffVerification";
 import JobModeration from "./pages/JobModeration";
 import EventManagement from "./pages/EventManagement";
+import ReportsSafety from "./pages/ReportsSafety";
 import Analytics from "./pages/Analytics";
-import FirebaseDiag from "./pages/FirebaseDiag";
+import ActivityLog from "./pages/ActivityLog";
 
 export default function App() {
   return (
@@ -15,13 +17,15 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
-          <Route path="/diag" element={<FirebaseDiag />} />
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/users" element={<UserManagement />} />
+            <Route path="/staff" element={<StaffVerification />} />
             <Route path="/jobs" element={<JobModeration />} />
             <Route path="/events" element={<EventManagement />} />
+            <Route path="/reports" element={<ReportsSafety />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/activity" element={<ActivityLog />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

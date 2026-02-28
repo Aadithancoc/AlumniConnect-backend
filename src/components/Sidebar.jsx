@@ -10,15 +10,41 @@ import {
     GraduationCap,
     ChevronLeft,
     ChevronRight,
+    ShieldCheck,
+    AlertTriangle,
+    ScrollText,
 } from "lucide-react";
 import "./Sidebar.css";
 
-const navItems = [
-    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/users", label: "User Management", icon: Users },
-    { to: "/jobs", label: "Job Moderation", icon: Briefcase },
-    { to: "/events", label: "Event Management", icon: CalendarDays },
-    { to: "/analytics", label: "Analytics", icon: BarChart3 },
+const navSections = [
+    {
+        label: "Main",
+        items: [
+            { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        ],
+    },
+    {
+        label: "Management",
+        items: [
+            { to: "/users", label: "User Management", icon: Users },
+            { to: "/staff", label: "Staff Verification", icon: ShieldCheck },
+        ],
+    },
+    {
+        label: "Moderation",
+        items: [
+            { to: "/jobs", label: "Job Moderation", icon: Briefcase },
+            { to: "/events", label: "Event Management", icon: CalendarDays },
+            { to: "/reports", label: "Reports & Safety", icon: AlertTriangle },
+        ],
+    },
+    {
+        label: "System",
+        items: [
+            { to: "/analytics", label: "Analytics", icon: BarChart3 },
+            { to: "/activity", label: "Activity Log", icon: ScrollText },
+        ],
+    },
 ];
 
 export default function Sidebar({ collapsed, setCollapsed }) {
@@ -47,22 +73,26 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
             {/* Navigation */}
             <nav className="sidebar-nav">
-                <div className="sidebar-nav-label">
-                    {!collapsed && "MENU"}
-                </div>
-                {navItems.map((item) => (
-                    <NavLink
-                        key={item.to}
-                        to={item.to}
-                        className={({ isActive }) =>
-                            `sidebar-link ${isActive ? "sidebar-link--active" : ""}`
-                        }
-                        title={item.label}
-                    >
-                        <item.icon size={20} strokeWidth={1.8} />
-                        {!collapsed && <span>{item.label}</span>}
-                        {!collapsed && <div className="sidebar-link-indicator" />}
-                    </NavLink>
+                {navSections.map((section) => (
+                    <div className="sidebar-section" key={section.label}>
+                        <div className="sidebar-section-label">
+                            {!collapsed && section.label}
+                        </div>
+                        {section.items.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                className={({ isActive }) =>
+                                    `sidebar-link ${isActive ? "sidebar-link--active" : ""}`
+                                }
+                                title={item.label}
+                            >
+                                <item.icon size={20} strokeWidth={1.8} />
+                                {!collapsed && <span>{item.label}</span>}
+                                {!collapsed && <div className="sidebar-link-indicator" />}
+                            </NavLink>
+                        ))}
+                    </div>
                 ))}
             </nav>
 

@@ -1,329 +1,203 @@
 import { useEffect, useState } from "react";
 import {
-    BarChart3,
-    TrendingUp,
-    Users,
-    Briefcase,
-    CalendarDays,
-    Award,
+    TrendingUp, Building2, Users, CalendarDays, MessageSquare, Zap, Award,
 } from "lucide-react";
 import {
-    AreaChart,
-    Area,
-    BarChart,
-    Bar,
-    PieChart,
-    Pie,
-    Cell,
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Legend,
-    RadarChart,
-    PolarGrid,
-    PolarAngleAxis,
-    PolarRadiusAxis,
-    Radar,
-    ComposedChart,
+    AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, RadarChart,
+    PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
-    fetchUsers,
-    fetchJobs,
-    fetchEvents,
-    fetchEngagementData,
-    computeUserGrowth,
-    computeTopCompanies,
-    computeDepartmentDistribution,
-    computeEventParticipation,
+    fetchUsers, fetchJobs, fetchEvents, fetchEngagementData,
+    computeUserGrowth, computeTopCompanies, computeDepartmentDistribution,
+    computeBatchDistribution, computeEventParticipation, computeMostActiveUsers,
+    computeEngagementRate,
 } from "../services/firestoreService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import "./Analytics.css";
 
-const PIE_COLORS = [
-    "#2BB673", "#34d68a", "#6ee7a7", "#a7f3d0",
-    "#d1fae5", "#bbf7d0", "#059669",
-];
-
 export default function Analytics() {
     const [loading, setLoading] = useState(true);
-    const [growthData, setGrowthData] = useState([]);
-    const [topCompanies, setTopCompanies] = useState([]);
-    const [deptDistribution, setDeptDistribution] = useState([]);
-    const [eventParticipation, setEventParticipation] = useState([]);
-    const [engagementData, setEngagementData] = useState([]);
-    const [radarData, setRadarData] = useState([]);
+    const [data, setData] = useState({});
 
     useEffect(() => {
-        let cancelled = false;
-        async function load() {
+        (async () => {
             try {
-                const [users, jobs, events, engagement] = await Promise.all([
-                    fetchUsers(),
-                    fetchJobs(),
-                    fetchEvents(),
-                    fetchEngagementData(),
+                const [users, jobs, events, engagement, engRate] = await Promise.all([
+                    fetchUsers(), fetchJobs(), fetchEvents(), fetchEngagementData(), computeEngagementRate(),
                 ]);
-
-                if (cancelled) return;
-
-                setGrowthData(computeUserGrowth(users));
-                setTopCompanies(computeTopCompanies(jobs));
-                setDeptDistribution(computeDepartmentDistribution(users));
-                setEventParticipation(computeEventParticipation(events));
-
-                // If engagement collection exists, use it; otherwise build from available data
-                if (engagement.length > 0) {
-                    setEngagementData(engagement);
-                } else {
-                    // Build engagement proxy from jobs + events per month
-                    const monthMap = {};
-                    jobs.forEach((j) => {
-                        const raw = j.postedAt || j.createdAt;
-                        if (!raw) return;
-                        const date = raw.toDate ? raw.toDate() : new Date(raw);
-                        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-                        const month = date.toLocaleDateString("en-US", { month: "short" });
-                        if (!monthMap[key]) monthMap[key] = { key, month, posts: 0, events: 0, activity: 0 };
-                        monthMap[key].posts += 1;
-                        monthMap[key].activity += 1;
-                    });
-                    events.forEach((e) => {
-                        const raw = e.date || e.createdAt;
-                        if (!raw) return;
-                        const date = raw.toDate ? raw.toDate() : new Date(raw);
-                        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-                        const month = date.toLocaleDateString("en-US", { month: "short" });
-                        if (!monthMap[key]) monthMap[key] = { key, month, posts: 0, events: 0, activity: 0 };
-                        monthMap[key].events += 1;
-                        monthMap[key].activity += (e.participants || 0);
-                    });
-                    setEngagementData(
-                        Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key)).slice(-12)
-                    );
-                }
-
-                // Build radar from actual data
-                const totalParticipants = events.reduce((s, e) => s + (e.participants || 0), 0);
-                setRadarData([
-                    { subject: "Registrations", A: Math.min(users.length, 100) },
-                    { subject: "Job Posts", A: Math.min(jobs.length * 5, 100) },
-                    { subject: "Events", A: Math.min(events.length * 8, 100) },
-                    { subject: "Participation", A: Math.min(Math.round(totalParticipants / Math.max(events.length, 1)), 100) },
-                    { subject: "Companies", A: Math.min(new Set(jobs.map((j) => j.company)).size * 8, 100) },
-                    { subject: "Departments", A: Math.min(new Set(users.map((u) => u.department)).size * 12, 100) },
-                ]);
-            } catch (err) {
-                console.error("Failed to load analytics:", err);
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        }
-        load();
-        return () => { cancelled = true; };
+                setData({
+                    growthData: computeUserGrowth(users),
+                    topCompanies: computeTopCompanies(jobs),
+                    deptDist: computeDepartmentDistribution(users),
+                    batchDist: computeBatchDistribution(users),
+                    eventPart: computeEventParticipation(events),
+                    activeUsers: computeMostActiveUsers(users, jobs, events),
+                    engagementRate: engRate,
+                    engagement,
+                    radarData: [
+                        { metric: "Users", value: users.length },
+                        { metric: "Jobs", value: jobs.length },
+                        { metric: "Events", value: events.length },
+                        { metric: "Messages", value: engRate * 30 },
+                        { metric: "Engagement", value: Math.min((jobs.length + events.length) * 10, 100) },
+                    ],
+                });
+            } catch (e) { console.error("Analytics:", e); }
+            finally { setLoading(false); }
+        })();
     }, []);
 
     if (loading) return <LoadingSpinner message="Loading analytics..." />;
+
+    const {
+        growthData, topCompanies, deptDist, batchDist, eventPart,
+        activeUsers, engagementRate, engagement, radarData,
+    } = data;
 
     return (
         <div className="analytics">
             <div className="an-header animate-fade-in-up">
                 <div>
                     <h2 className="an-title">Analytics & Insights</h2>
-                    <p className="an-subtitle">
-                        Data-driven overview of the AlumniConnect ecosystem
-                    </p>
+                    <p className="an-subtitle">Platform performance and engagement metrics</p>
                 </div>
-                <div className="an-badge">
-                    <BarChart3 size={14} />
-                    Real-time data
-                </div>
+                <div className="an-badge"><TrendingUp size={14} /> Live Data</div>
             </div>
 
             {/* Row 1: Growth + Top Companies */}
-            <div className="an-row an-row-2 stagger">
+            <div className="an-row an-row-2">
                 <div className="an-card animate-fade-in-up">
                     <div className="an-card-header">
-                        <div>
-                            <h3 className="an-card-title">
-                                <TrendingUp size={16} /> Alumni Growth Trend
-                            </h3>
-                            <p className="an-card-subtitle">Registration growth over time</p>
-                        </div>
+                        <div><h3 className="an-card-title"><TrendingUp size={16} /> User Growth</h3><p className="an-card-subtitle">Monthly registration trend</p></div>
                     </div>
-                    {growthData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                            <AreaChart data={growthData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="growthGrad2" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#2BB673" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#2BB673" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={{ border: "none", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", fontSize: 13 }} />
-                                <Area type="monotone" dataKey="users" stroke="#2BB673" strokeWidth={2.5} fill="url(#growthGrad2)" />
+                    {growthData?.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <AreaChart data={growthData}><defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2BB673" stopOpacity={0.25} /><stop offset="95%" stopColor="#2BB673" stopOpacity={0} /></linearGradient></defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" /><XAxis dataKey="month" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} /><YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={{ border: "none", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", fontSize: 13 }} /><Area type="monotone" dataKey="users" stroke="#2BB673" strokeWidth={2.5} fill="url(#g1)" />
                             </AreaChart>
                         </ResponsiveContainer>
-                    ) : (
-                        <p className="an-empty">No growth data available yet. Add users with a joinedAt or createdAt field.</p>
-                    )}
+                    ) : <p className="an-empty">No registration data</p>}
                 </div>
 
                 <div className="an-card animate-fade-in-up">
                     <div className="an-card-header">
-                        <div>
-                            <h3 className="an-card-title">
-                                <Briefcase size={16} /> Top Hiring Companies
-                            </h3>
-                            <p className="an-card-subtitle">Most active companies posting jobs</p>
-                        </div>
+                        <div><h3 className="an-card-title"><Building2 size={16} /> Top Companies</h3><p className="an-card-subtitle">Most hiring companies</p></div>
                     </div>
-                    {topCompanies.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={topCompanies} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-                                <XAxis type="number" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: "#6B7280" }} axisLine={false} tickLine={false} width={80} />
-                                <Tooltip contentStyle={{ border: "none", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", fontSize: 13 }} />
-                                <Bar dataKey="jobs" fill="#2BB673" radius={[0, 6, 6, 0]} barSize={18} />
+                    {topCompanies?.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={topCompanies} layout="vertical" margin={{ left: 80 }}>
+                                <XAxis type="number" hide /><YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: "#6B7280" }} width={75} />
+                                <Tooltip contentStyle={{ border: "none", borderRadius: 8, fontSize: 13 }} /><Bar dataKey="jobs" fill="#2BB673" radius={[0, 4, 4, 0]} barSize={16} />
                             </BarChart>
                         </ResponsiveContainer>
-                    ) : (
-                        <p className="an-empty">No job data available yet.</p>
-                    )}
+                    ) : <p className="an-empty">No job data</p>}
                 </div>
             </div>
 
-            {/* Row 2: Engagement + Department Distribution */}
-            <div className="an-row an-row-2 stagger">
+            {/* Row 2: Batch Distribution + Department Distribution */}
+            <div className="an-row an-row-2">
                 <div className="an-card animate-fade-in-up">
                     <div className="an-card-header">
-                        <div>
-                            <h3 className="an-card-title">
-                                <Award size={16} /> Activity Metrics
-                            </h3>
-                            <p className="an-card-subtitle">Platform activity over time</p>
-                        </div>
+                        <div><h3 className="an-card-title"><Award size={16} /> Batch Distribution</h3><p className="an-card-subtitle">Alumni by graduation year</p></div>
                     </div>
-                    {engagementData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                            <ComposedChart data={engagementData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={{ border: "none", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", fontSize: 13 }} />
-                                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
-                                <Bar dataKey="posts" fill="#2BB673" radius={[4, 4, 0, 0]} barSize={14} name="Jobs Posted" />
-                                <Bar dataKey="events" fill="#6ee7a7" radius={[4, 4, 0, 0]} barSize={14} name="Events Created" />
-                                {engagementData[0]?.activity !== undefined && (
-                                    <Line type="monotone" dataKey="activity" stroke="#1f9e5e" strokeWidth={2} dot={{ r: 3 }} name="Activity" />
-                                )}
-                            </ComposedChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <p className="an-empty">No activity data available yet.</p>
-                    )}
-                </div>
-
-                <div className="an-card animate-fade-in-up">
-                    <div className="an-card-header">
-                        <div>
-                            <h3 className="an-card-title">
-                                <Users size={16} /> Department Distribution
-                            </h3>
-                            <p className="an-card-subtitle">Alumni by academic department</p>
-                        </div>
-                    </div>
-                    {deptDistribution.length > 0 ? (
+                    {batchDist?.length > 0 ? (
                         <div className="an-pie-wrap">
-                            <ResponsiveContainer width="100%" height={260}>
-                                <PieChart>
-                                    <Pie
-                                        data={deptDistribution}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={95}
-                                        paddingAngle={3}
-                                        dataKey="value"
-                                    >
-                                        {deptDistribution.map((_, i) => (
-                                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip contentStyle={{ border: "none", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", fontSize: 13 }} />
-                                </PieChart>
+                            <ResponsiveContainer width="50%" height={200}>
+                                <PieChart><Pie data={batchDist} cx="50%" cy="50%" outerRadius={80} dataKey="value" stroke="none">
+                                    {batchDist.map((d, i) => <Cell key={i} fill={d.color} />)}
+                                </Pie><Tooltip /></PieChart>
                             </ResponsiveContainer>
                             <div className="an-pie-legend">
-                                {deptDistribution.map((d, i) => (
-                                    <div className="an-pie-legend-item" key={i}>
-                                        <span className="an-pie-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                                        <span className="an-pie-label">{d.name}</span>
-                                        <span className="an-pie-value">{d.value}</span>
-                                    </div>
+                                {batchDist.slice(0, 6).map((d, i) => (
+                                    <div className="an-pie-legend-item" key={i}><div className="an-pie-dot" style={{ background: d.color }} /><span className="an-pie-label">{d.name}</span><span className="an-pie-value">{d.value}</span></div>
                                 ))}
                             </div>
                         </div>
-                    ) : (
-                        <p className="an-empty">No department data available yet.</p>
-                    )}
+                    ) : <p className="an-empty">No batch data</p>}
+                </div>
+
+                <div className="an-card animate-fade-in-up">
+                    <div className="an-card-header">
+                        <div><h3 className="an-card-title"><Users size={16} /> Department Distribution</h3><p className="an-card-subtitle">Alumni by department</p></div>
+                    </div>
+                    {deptDist?.length > 0 ? (
+                        <div className="an-pie-wrap">
+                            <ResponsiveContainer width="50%" height={200}>
+                                <PieChart><Pie data={deptDist} cx="50%" cy="50%" outerRadius={80} dataKey="value" stroke="none">
+                                    {deptDist.map((d, i) => <Cell key={i} fill={d.color} />)}
+                                </Pie><Tooltip /></PieChart>
+                            </ResponsiveContainer>
+                            <div className="an-pie-legend">
+                                {deptDist.slice(0, 6).map((d, i) => (
+                                    <div className="an-pie-legend-item" key={i}><div className="an-pie-dot" style={{ background: d.color }} /><span className="an-pie-label">{d.name}</span><span className="an-pie-value">{d.value}</span></div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : <p className="an-empty">No department data</p>}
                 </div>
             </div>
 
-            {/* Row 3: Event Participation + Engagement Radar */}
-            <div className="an-row an-row-2 stagger">
+            {/* Row 3: Event Participation + Radar */}
+            <div className="an-row an-row-2">
                 <div className="an-card animate-fade-in-up">
                     <div className="an-card-header">
-                        <div>
-                            <h3 className="an-card-title">
-                                <CalendarDays size={16} /> Event Participation
-                            </h3>
-                            <p className="an-card-subtitle">Attendance across platform events</p>
-                        </div>
+                        <div><h3 className="an-card-title"><CalendarDays size={16} /> Event Participation</h3><p className="an-card-subtitle">Attendance per event</p></div>
                     </div>
-                    {eventParticipation.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={eventParticipation} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={{ border: "none", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", fontSize: 13 }} />
-                                <Bar dataKey="value" fill="#2BB673" radius={[6, 6, 0, 0]} barSize={32} name="Participants" />
+                    {eventPart?.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={eventPart}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" /><XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ border: "none", borderRadius: 8, fontSize: 13 }} />
+                                <Bar dataKey="value" fill="#8B5CF6" radius={[4, 4, 0, 0]} barSize={20} name="Participants" />
                             </BarChart>
                         </ResponsiveContainer>
-                    ) : (
-                        <p className="an-empty">No event participation data yet.</p>
-                    )}
+                    ) : <p className="an-empty">No event data</p>}
                 </div>
 
                 <div className="an-card animate-fade-in-up">
                     <div className="an-card-header">
-                        <div>
-                            <h3 className="an-card-title">
-                                <BarChart3 size={16} /> Platform Activity Radar
-                            </h3>
-                            <p className="an-card-subtitle">Alumni engagement categories</p>
-                        </div>
+                        <div><h3 className="an-card-title"><Zap size={16} /> Platform Overview</h3><p className="an-card-subtitle">Multi-metric radar</p></div>
                     </div>
-                    {radarData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                            <RadarChart cx="50%" cy="50%" outerRadius={100} data={radarData}>
-                                <PolarGrid stroke="#e5e7eb" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: "#6B7280" }} />
-                                <PolarRadiusAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-                                <Radar name="Score" dataKey="A" stroke="#2BB673" fill="#2BB673" fillOpacity={0.2} strokeWidth={2} />
-                                <Tooltip contentStyle={{ border: "none", borderRadius: 10, boxShadow: "0 4px 14px rgba(0,0,0,0.08)", fontSize: 13 }} />
+                    {radarData ? (
+                        <ResponsiveContainer width="100%" height={220}>
+                            <RadarChart data={radarData}>
+                                <PolarGrid stroke="#e5e7eb" /><PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: "#6B7280" }} />
+                                <PolarRadiusAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} /><Radar dataKey="value" stroke="#2BB673" fill="#2BB673" fillOpacity={0.2} strokeWidth={2} />
                             </RadarChart>
                         </ResponsiveContainer>
-                    ) : (
-                        <p className="an-empty">Not enough data for radar chart.</p>
-                    )}
+                    ) : <p className="an-empty">No data</p>}
+                </div>
+            </div>
+
+            {/* Row 4: Insight Cards */}
+            <div className="an-row an-row-3">
+                <div className="an-card an-insight animate-fade-in-up">
+                    <MessageSquare size={22} className="an-insight-icon" style={{ color: "#06B6D4" }} />
+                    <div className="an-insight-value">{engagementRate || 0}</div>
+                    <div className="an-insight-label">Messages / Day</div>
+                </div>
+
+                <div className="an-card an-insight animate-fade-in-up">
+                    <div className="an-insight-header"><Award size={22} className="an-insight-icon" style={{ color: "#F59E0B" }} /></div>
+                    <div className="an-insight-label" style={{ marginBottom: 8 }}>Most Active Users</div>
+                    <div className="an-active-list">
+                        {activeUsers?.slice(0, 5).map((u, i) => (
+                            <div className="an-active-item" key={i}>
+                                <span className="an-active-rank">#{i + 1}</span>
+                                <span className="an-active-name">{u.name}</span>
+                                <span className="an-active-score">{u.score} pts</span>
+                            </div>
+                        ))}
+                        {(!activeUsers || activeUsers.length === 0) && <p className="an-empty" style={{ padding: 10 }}>No activity data</p>}
+                    </div>
+                </div>
+
+                <div className="an-card an-insight animate-fade-in-up">
+                    <Zap size={22} className="an-insight-icon" style={{ color: "#2BB673" }} />
+                    <div className="an-insight-value">{engagement?.length || 0}</div>
+                    <div className="an-insight-label">Engagement Records</div>
                 </div>
             </div>
         </div>

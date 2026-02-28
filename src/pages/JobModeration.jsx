@@ -1,240 +1,174 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-    Briefcase,
-    MapPin,
-    User,
-    DollarSign,
-    Trash2,
-    Eye,
-    X,
-    Search,
-    AlertTriangle,
+    Briefcase, Search, Trash2, Eye, X, MapPin, DollarSign,
+    User, Calendar, Building2, CheckCircle2, ShieldCheck, Filter,
 } from "lucide-react";
-import { subscribeToJobs, deleteJob } from "../services/firestoreService";
+import {
+    subscribeToJobs, deleteJob, verifyJob, computeTopCompanies,
+} from "../services/firestoreService";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import "./JobModeration.css";
 
 export default function JobModeration() {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [filter, setFilter] = useState("all");
     const [selectedJob, setSelectedJob] = useState(null);
-    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [verifying, setVerifying] = useState(null);
 
-    // Real-time subscription to jobs collection
     useEffect(() => {
-        const unsub = subscribeToJobs((data) => {
-            setJobs(data);
-            setLoading(false);
-        });
+        const unsub = subscribeToJobs((data) => { setJobs(data); setLoading(false); });
         return unsub;
     }, []);
 
-    const filtered = jobs.filter((j) => {
-        const q = search.toLowerCase();
-        return (
-            !q ||
-            (j.title || "").toLowerCase().includes(q) ||
-            (j.company || "").toLowerCase().includes(q) ||
-            (j.postedBy || "").toLowerCase().includes(q)
-        );
-    });
+    const topCompanies = useMemo(() => computeTopCompanies(jobs, 6), [jobs]);
+    const verifiedCount = jobs.filter((j) => j.verified).length;
+    const unverifiedCount = jobs.length - verifiedCount;
 
-    const handleDelete = async (id) => {
+    const filtered = useMemo(() => {
+        const q = search.toLowerCase();
+        return jobs.filter((j) => {
+            const matchQ = !q ||
+                (j.title || "").toLowerCase().includes(q) ||
+                (j.company || "").toLowerCase().includes(q);
+            const matchF = filter === "all" ||
+                (filter === "verified" && j.verified) ||
+                (filter === "unverified" && !j.verified);
+            return matchQ && matchF;
+        });
+    }, [jobs, search, filter]);
+
+    const handleDelete = async (jobId) => {
         setDeleting(true);
-        try {
-            await deleteJob(id);
-            // The real-time listener will update the list automatically
-        } catch (err) {
-            console.error("Failed to delete job:", err);
-            alert("Failed to delete job. Please try again.");
-        }
+        try { await deleteJob(jobId); } catch (e) { alert("Delete failed: " + e.message); }
         setDeleting(false);
-        setDeleteConfirm(null);
+        setConfirmDelete(null);
     };
 
-    if (loading) return <LoadingSpinner message="Loading job postings..." />;
+    const handleVerify = async (jobId) => {
+        setVerifying(jobId);
+        try { await verifyJob(jobId); } catch (e) { alert("Verify failed: " + e.message); }
+        setVerifying(null);
+    };
+
+    if (loading) return <LoadingSpinner message="Loading jobs..." />;
 
     return (
-        <div className="job-mod">
-            {/* Header */}
+        <div className="jm-page">
             <div className="jm-header animate-fade-in-up">
                 <div>
                     <h2 className="jm-title">Job Moderation</h2>
-                    <p className="jm-subtitle">
-                        Review and manage {jobs.length} job postings
-                    </p>
+                    <p className="jm-subtitle">{jobs.length} jobs · {verifiedCount} verified · {unverifiedCount} pending</p>
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="jm-search-bar animate-fade-in-up">
-                <Search size={16} className="jm-search-icon" />
-                <input
-                    type="text"
-                    placeholder="Search jobs by title, company, or poster..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="jm-search-input"
-                    id="job-search"
-                />
+            {/* Top Companies Card */}
+            {topCompanies.length > 0 && (
+                <div className="jm-top-companies animate-fade-in-up">
+                    <h3 className="jm-top-companies-title"><Building2 size={16} /> Most Hiring Companies</h3>
+                    <div className="jm-top-chart">
+                        <ResponsiveContainer width="100%" height={140}>
+                            <BarChart data={topCompanies} layout="vertical" margin={{ left: 80, right: 20, top: 5, bottom: 5 }}>
+                                <XAxis type="number" hide />
+                                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: "#6B7280" }} width={75} />
+                                <Tooltip contentStyle={{ border: "none", borderRadius: 8, fontSize: 13 }} />
+                                <Bar dataKey="jobs" fill="#2BB673" radius={[0, 4, 4, 0]} barSize={16} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
+            {/* Controls */}
+            <div className="jm-controls animate-fade-in-up">
+                <div className="sv-search-wrap">
+                    <Search size={16} className="sv-search-icon" />
+                    <input placeholder="Search jobs..." value={search} onChange={(e) => setSearch(e.target.value)} className="sv-search-input" />
+                </div>
+                <div className="sv-tabs">
+                    <Filter size={14} style={{ color: "var(--text-muted)" }} />
+                    {["all", "verified", "unverified"].map((f) => (
+                        <button key={f} className={`sv-tab ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Job Cards Grid */}
+            {/* Job Grid */}
             <div className="jm-grid stagger">
-                {filtered.map((job) => {
-                    const postedDate = job.postedAt
-                        ? (job.postedAt.toDate ? job.postedAt.toDate() : new Date(job.postedAt)).toLocaleDateString()
-                        : "—";
+                {filtered.map((j) => {
+                    const rawDate = j.postedAt || j.createdAt;
+                    const dateObj = rawDate?.toDate ? rawDate.toDate() : new Date(rawDate);
+                    const dateStr = dateObj && !isNaN(dateObj) ? dateObj.toLocaleDateString() : "—";
+                    const posterRole = j.postedByRole || (j.postedBy?.includes("staff") ? "staff" : "alumni");
+
                     return (
-                        <div className="jm-card animate-fade-in-up" key={job.id}>
+                        <div className={`jm-card animate-fade-in-up ${j.verified ? "jm-card--verified" : ""}`} key={j.id}>
                             <div className="jm-card-top">
-                                <div className="jm-card-icon">
-                                    <Briefcase size={18} />
+                                <div className="jm-card-icon"><Briefcase size={20} /></div>
+                                <div className="jm-card-badges">
+                                    {j.verified && <span className="jm-verified-badge"><CheckCircle2 size={12} /> Verified</span>}
+                                    <span className={`jm-poster-role jm-poster-${posterRole}`}>{posterRole}</span>
                                 </div>
-                                <span className="jm-card-type">{job.type || "Job"}</span>
                             </div>
-
-                            <h3 className="jm-card-title">{job.title || "Untitled"}</h3>
-
-                            <div className="jm-card-details">
-                                <div className="jm-card-detail">
-                                    <MapPin size={13} />
-                                    <span>{job.company || "Unknown"} · {job.location || "N/A"}</span>
-                                </div>
-                                {job.salary && (
-                                    <div className="jm-card-detail">
-                                        <DollarSign size={13} />
-                                        <span>{job.salary}</span>
-                                    </div>
+                            <h3 className="jm-card-title">{j.title || "Untitled"}</h3>
+                            <p className="jm-card-company"><Building2 size={14} />{j.company || "Unknown"}</p>
+                            <div className="jm-card-meta">
+                                <span><MapPin size={13} />{j.location || "N/A"}</span>
+                                <span><Calendar size={13} />{dateStr}</span>
+                            </div>
+                            {j.salary && <p className="jm-card-salary"><DollarSign size={13} />{j.salary}</p>}
+                            <div className="jm-card-actions">
+                                <button className="jm-action-btn jm-action-view" onClick={() => setSelectedJob(j)}><Eye size={15} /> View</button>
+                                {!j.verified && (
+                                    <button className="jm-action-btn jm-action-verify" onClick={() => handleVerify(j.id)} disabled={verifying === j.id}>
+                                        <ShieldCheck size={15} /> {verifying === j.id ? "..." : "Verify"}
+                                    </button>
                                 )}
-                                <div className="jm-card-detail">
-                                    <User size={13} />
-                                    <span>Posted by {job.postedBy || "Unknown"}</span>
-                                </div>
-                            </div>
-
-                            <div className="jm-card-footer">
-                                <span className="jm-card-date">{postedDate}</span>
-                                <div className="jm-card-actions">
-                                    <button
-                                        className="jm-action-btn jm-view"
-                                        onClick={() => setSelectedJob(job)}
-                                        title="View details"
-                                    >
-                                        <Eye size={15} />
-                                    </button>
-                                    <button
-                                        className="jm-action-btn jm-delete"
-                                        onClick={() => setDeleteConfirm(job)}
-                                        title="Remove posting"
-                                    >
-                                        <Trash2 size={15} />
-                                    </button>
-                                </div>
+                                <button className="jm-action-btn jm-action-delete" onClick={() => setConfirmDelete(j.id)}><Trash2 size={15} /></button>
                             </div>
                         </div>
                     );
                 })}
-
-                {filtered.length === 0 && (
-                    <div className="jm-empty">
-                        <Briefcase size={40} strokeWidth={1} />
-                        <p>No job postings found</p>
-                    </div>
-                )}
+                {filtered.length === 0 && <p className="jm-empty">No jobs found</p>}
             </div>
 
             {/* Detail Modal */}
             {selectedJob && (
                 <div className="jm-modal-overlay" onClick={() => setSelectedJob(null)}>
                     <div className="jm-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
-                        <button className="jm-modal-close" onClick={() => setSelectedJob(null)}>
-                            <X size={18} />
-                        </button>
-
-                        <div className="jm-modal-icon">
-                            <Briefcase size={24} />
-                        </div>
+                        <button className="jm-modal-close" onClick={() => setSelectedJob(null)}><X size={18} /></button>
+                        <div className="jm-modal-icon"><Briefcase size={24} /></div>
                         <h3 className="jm-modal-title">{selectedJob.title || "Untitled"}</h3>
                         <p className="jm-modal-company">{selectedJob.company || "Unknown"}</p>
-
                         <div className="jm-modal-grid">
-                            <div className="jm-modal-item">
-                                <span className="jm-modal-label">Location</span>
-                                <span className="jm-modal-value">{selectedJob.location || "N/A"}</span>
-                            </div>
-                            <div className="jm-modal-item">
-                                <span className="jm-modal-label">Type</span>
-                                <span className="jm-modal-value">{selectedJob.type || "N/A"}</span>
-                            </div>
-                            {selectedJob.salary && (
-                                <div className="jm-modal-item">
-                                    <span className="jm-modal-label">Salary</span>
-                                    <span className="jm-modal-value">{selectedJob.salary}</span>
-                                </div>
-                            )}
-                            <div className="jm-modal-item">
-                                <span className="jm-modal-label">Posted By</span>
-                                <span className="jm-modal-value">{selectedJob.postedBy || "Unknown"}</span>
-                            </div>
-                            <div className="jm-modal-item">
-                                <span className="jm-modal-label">Posted On</span>
-                                <span className="jm-modal-value">
-                                    {selectedJob.postedAt
-                                        ? (selectedJob.postedAt.toDate
-                                            ? selectedJob.postedAt.toDate()
-                                            : new Date(selectedJob.postedAt)
-                                        ).toLocaleDateString()
-                                        : "—"}
-                                </span>
-                            </div>
+                            <div className="jm-modal-item"><span className="jm-modal-label">Location</span><span className="jm-modal-value">{selectedJob.location || "N/A"}</span></div>
+                            <div className="jm-modal-item"><span className="jm-modal-label">Type</span><span className="jm-modal-value">{selectedJob.type || "N/A"}</span></div>
+                            <div className="jm-modal-item"><span className="jm-modal-label">Salary</span><span className="jm-modal-value">{selectedJob.salary || "Not specified"}</span></div>
+                            <div className="jm-modal-item"><span className="jm-modal-label">Posted By</span><span className="jm-modal-value">{selectedJob.postedBy || "Unknown"}</span></div>
+                            <div className="jm-modal-item"><span className="jm-modal-label">Verified</span><span className="jm-modal-value">{selectedJob.verified ? "✅ Yes" : "❌ No"}</span></div>
                         </div>
-
-                        {selectedJob.description && (
-                            <div className="jm-modal-desc">
-                                <span className="jm-modal-label">Description</span>
-                                <p>{selectedJob.description}</p>
-                            </div>
-                        )}
+                        {selectedJob.description && <p className="jm-modal-desc">{selectedJob.description}</p>}
                     </div>
                 </div>
             )}
 
-            {/* Delete Confirmation */}
-            {deleteConfirm && (
-                <div className="jm-modal-overlay" onClick={() => !deleting && setDeleteConfirm(null)}>
+            {/* Delete Confirm */}
+            {confirmDelete && (
+                <div className="jm-modal-overlay" onClick={() => !deleting && setConfirmDelete(null)}>
                     <div className="jm-confirm animate-scale-in" onClick={(e) => e.stopPropagation()}>
-                        <div className="jm-confirm-icon">
-                            <AlertTriangle size={28} />
-                        </div>
-                        <h3>Remove Job Posting?</h3>
-                        <p>
-                            Are you sure you want to remove <strong>"{deleteConfirm.title || "this job"}"</strong>
-                            {deleteConfirm.postedBy ? ` by ${deleteConfirm.postedBy}` : ""}? This action cannot be undone.
-                        </p>
+                        <div className="jm-confirm-icon"><Trash2 size={28} /></div>
+                        <h3>Delete this job?</h3>
+                        <p>This action cannot be undone.</p>
                         <div className="jm-confirm-actions">
-                            <button
-                                className="jm-confirm-cancel"
-                                onClick={() => setDeleteConfirm(null)}
-                                disabled={deleting}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="jm-confirm-delete"
-                                onClick={() => handleDelete(deleteConfirm.id)}
-                                disabled={deleting}
-                            >
-                                {deleting ? (
-                                    <span className="login-spinner" style={{ width: 16, height: 16 }} />
-                                ) : (
-                                    <>
-                                        <Trash2 size={15} />
-                                        Remove
-                                    </>
-                                )}
+                            <button className="jm-confirm-cancel" onClick={() => setConfirmDelete(null)} disabled={deleting}>Cancel</button>
+                            <button className="jm-confirm-delete" onClick={() => handleDelete(confirmDelete)} disabled={deleting}>
+                                {deleting ? "Deleting..." : <><Trash2 size={15} /> Delete</>}
                             </button>
                         </div>
                     </div>

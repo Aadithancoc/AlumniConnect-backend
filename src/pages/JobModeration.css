@@ -1,8 +1,82 @@
 /* =========== Job Moderation =========== */
-.job-mod {
+.jm-page {
     display: flex;
     flex-direction: column;
     gap: 20px;
+}
+
+/* Top Companies */
+.jm-top-companies {
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
+    padding: 18px 22px;
+    border: 1px solid var(--bg-gray-100);
+    box-shadow: var(--shadow-sm);
+    opacity: 0;
+}
+
+.jm-top-companies-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.jm-top-companies-title svg {
+    color: var(--primary);
+}
+
+/* Controls */
+.jm-controls {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    opacity: 0;
+}
+
+/* Badges */
+.jm-card-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.jm-verified-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+    background: var(--success-bg);
+    color: var(--success);
+}
+
+.jm-poster-role {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    text-transform: capitalize;
+}
+
+.jm-poster-alumni {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+
+.jm-poster-staff {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8B5CF6;
+}
+
+.jm-card--verified {
+    border-left: 3px solid var(--primary);
 }
 
 .jm-header {
@@ -106,6 +180,39 @@
     color: var(--info);
 }
 
+.jm-card-company {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.jm-card-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.jm-card-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.jm-card-salary {
+    font-size: 0.78rem;
+    color: var(--primary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
 .jm-card-title {
     font-size: 1rem;
     font-weight: 700;
@@ -154,13 +261,44 @@
 }
 
 .jm-action-btn {
-    width: 34px;
-    height: 34px;
+    padding: 6px 12px;
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
     transition: all var(--transition-fast);
+}
+
+.jm-action-view {
+    color: var(--text-secondary);
+    background: var(--bg-gray-50);
+}
+
+.jm-action-view:hover {
+    background: var(--primary-bg);
+    color: var(--primary);
+}
+
+.jm-action-verify {
+    color: var(--primary);
+    background: var(--primary-bg);
+}
+
+.jm-action-verify:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+.jm-action-delete {
+    color: var(--text-muted);
+    background: none;
+}
+
+.jm-action-delete:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
 }
 
 .jm-view {

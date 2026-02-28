@@ -78,6 +78,20 @@
     min-height: 28px;
 }
 
+.sidebar-section {
+    margin-bottom: 4px;
+}
+
+.sidebar-section-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 12px 14px 4px;
+    min-height: 20px;
+}
+
 .sidebar-link {
     display: flex;
     align-items: center;

@@ -15,15 +15,6 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID || "YOUR_APP_ID",
 };
 
-// Debug: Log config to console so we can verify values are loading
-console.log("🔥 Firebase Config:", {
-    apiKey: firebaseConfig.apiKey ? "✅ loaded" : "❌ missing",
-    authDomain: firebaseConfig.authDomain,
-    projectId: firebaseConfig.projectId,
-    storageBucket: firebaseConfig.storageBucket,
-    appId: firebaseConfig.appId ? "✅ loaded" : "❌ missing",
-});
-
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
